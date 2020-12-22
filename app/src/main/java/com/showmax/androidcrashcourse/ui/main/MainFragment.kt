@@ -1,17 +1,22 @@
 package com.showmax.androidcrashcourse.ui.main
 
-import Items
+import Item
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.browser.customtabs.CustomTabColorSchemeParams
+import androidx.browser.customtabs.CustomTabsIntent
+import androidx.browser.customtabs.CustomTabsIntent.SHARE_STATE_ON
+import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
+import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import coil.api.load
+import coil.load
 import com.google.android.material.snackbar.Snackbar
 import com.showmax.androidcrashcourse.R
 import com.showmax.androidcrashcourse.databinding.ItemBinding
@@ -27,7 +32,11 @@ class MainFragment : Fragment() {
     private var _binding: MainFragmentBinding? = null
     private val binding get() = _binding!!
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
         _binding = MainFragmentBinding.inflate(inflater, container, false)
         val view = binding.root
         return view
@@ -42,9 +51,34 @@ class MainFragment : Fragment() {
             mainViewModel.onLoad(binding.textInputEditText.text.toString())
             true
         }
-        binding.rvItems.adapter = ItemAdapter(object: ItemAdapter.OnItemListener {
-            override fun onItemClicked(item: Items) {
-                Snackbar.make(binding.root, "Clicked item: ${item.title}", Snackbar.LENGTH_SHORT).show()
+        binding.rvItems.adapter = ItemAdapter(object : ItemAdapter.OnItemListener {
+            override fun onItemClicked(item: Item) {
+                context?.let {
+                    CustomTabsIntent.Builder().apply {
+                        setDefaultColorSchemeParams(
+                            CustomTabColorSchemeParams.Builder()
+                                .setToolbarColor(ContextCompat.getColor(it, R.color.colorPrimary))
+                                .setSecondaryToolbarColor(
+                                    ContextCompat.getColor(
+                                        it,
+                                        R.color.colorPrimaryDark
+                                    )
+                                )
+                                .build()
+                        )
+                        setShowTitle(true)
+                        setExitAnimations(it, android.R.anim.fade_in, android.R.anim.fade_out)
+                        setShareState(SHARE_STATE_ON)
+                    }
+                        .build()
+                        .launchUrl(it, Uri.parse(item.htmlUrl))
+                }
+            }
+
+            override fun onItemLongClicked(item: Item): Boolean {
+                Snackbar.make(binding.root, "Clicked item: ${item.login}", Snackbar.LENGTH_SHORT)
+                    .show()
+                return true
             }
         })
         binding.rvItems.layoutManager = GridLayoutManager(
@@ -54,7 +88,7 @@ class MainFragment : Fragment() {
             false
         )
         binding.rvItems.setHasFixedSize(true)
-        mainViewModel.data.observe(viewLifecycleOwner, Observer {
+        mainViewModel.data.observe(viewLifecycleOwner, {
             when (it) {
                 SearchStateData.InProgress -> {
                     enableProgress(true)
@@ -75,7 +109,7 @@ class MainFragment : Fragment() {
     }
 
     private fun enableProgress(enable: Boolean) {
-        binding.progressBar.visibility = if (enable) View.VISIBLE else View.GONE
+        binding.progressBar.isVisible = enable
         binding.button.isEnabled = !enable
         binding.textInputEditText.isEnabled = !enable
     }
@@ -85,17 +119,21 @@ class MainFragment : Fragment() {
         _binding = null
     }
 
-    class ItemAdapter(private val listener: OnItemListener): RecyclerView.Adapter<ItemAdapter.ItemViewHolder>() {
+    class ItemAdapter(private val listener: OnItemListener) :
+        RecyclerView.Adapter<ItemAdapter.ItemViewHolder>() {
 
-        private var items: List<Items> = emptyList()
+        private var items: List<Item> = emptyList()
 
-        class ItemViewHolder(private val itemBinding: ItemBinding, val listener: OnItemListener):RecyclerView.ViewHolder(itemBinding.root) {
-            fun bind(item: Items) {
-                val imageCandidate = item.images.find { it.type == "poster" && it.orientation == "square" } ?: item.images.first()
-                Log.i(TAG, "bind: " + imageCandidate.link)
-                itemBinding.imgItem.load(imageCandidate.link)
-                itemBinding.txtTitle.text = item.title
-                itemBinding.root.setOnClickListener { listener.onItemClicked(item)}
+        class ItemViewHolder(
+            private val itemBinding: ItemBinding,
+            private val listener: OnItemListener
+        ) : RecyclerView.ViewHolder(itemBinding.root) {
+            fun bind(item: Item) {
+                Log.i(TAG, "bind: " + item.avatarUrl)
+                itemBinding.imgItem.load(item.avatarUrl)
+                itemBinding.txtTitle.text = item.login
+                itemBinding.root.setOnClickListener { listener.onItemClicked(item) }
+                itemBinding.root.setOnLongClickListener { listener.onItemLongClicked(item) }
             }
 
             companion object {
@@ -104,16 +142,18 @@ class MainFragment : Fragment() {
         }
 
         interface OnItemListener {
-            fun onItemClicked(item: Items)
+            fun onItemClicked(item: Item)
+            fun onItemLongClicked(item: Item): Boolean
         }
 
-        fun setItems(items: List<Items>) {
+        fun setItems(items: List<Item>) {
             this.items = items
             notifyDataSetChanged()
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ItemViewHolder {
-            val itemBinding = ItemBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+            val itemBinding =
+                ItemBinding.inflate(LayoutInflater.from(parent.context), parent, false)
             return ItemViewHolder(itemBinding, listener)
         }
 

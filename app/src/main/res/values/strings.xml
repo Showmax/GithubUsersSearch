@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Showmax search</string>
-    <string name="textfield_label">search catalogue</string>
+    <string name="app_name">Github search</string>
+    <string name="textfield_label">search github users</string>
     <string name="search">search</string>
 </resources>
