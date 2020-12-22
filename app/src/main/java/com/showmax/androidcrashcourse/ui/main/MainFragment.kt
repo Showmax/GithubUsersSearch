@@ -38,7 +38,7 @@ class MainFragment : Fragment() {
         binding.button.setOnClickListener {
             mainViewModel.onLoad(binding.textInputEditText.text.toString())
         }
-        binding.textInputEditText.setOnEditorActionListener { v, actionId, event ->
+        binding.textInputEditText.setOnEditorActionListener { _, _, _ ->
             mainViewModel.onLoad(binding.textInputEditText.text.toString())
             true
         }
